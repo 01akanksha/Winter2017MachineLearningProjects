@@ -1,0 +1,2 @@
+Copy th efile to ada and run and compile using 
+javac QLearning.java and java Qlearning

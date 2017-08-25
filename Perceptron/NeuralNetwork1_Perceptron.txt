@@ -1,0 +1,287 @@
+//FNU Akanksha
+//ML HW 1
+
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package neuralnetwork1;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Random;
+import java.util.Vector;
+
+/**
+ *
+ * @author A
+ */
+public class NeuralNetwork1 {
+        //Variable Declaration 
+        private int inputSize, outputSize, epochs;
+	private double[][] weightsItoH;	
+	private double[] ai;
+	private double[] ao;
+	private double LEARNING_RATE;	
+
+        //Constructor to form the Neural Network and here we initialize all the variables like learning rate, input and output layer
+        public NeuralNetwork1(double learningRate, int inputSize, int outputSize) {
+		defaultInit(learningRate, inputSize, outputSize);
+	}
+        //Function to initialize the variables according to the ones passed to the object 
+        private void defaultInit(double learningRate, int inputSize, int outputSize) {
+		this.LEARNING_RATE = learningRate;
+		this.inputSize   = inputSize + 1;		
+		this.outputSize  = outputSize;
+		init();
+		randomizeWeights();
+	}
+        //To randomize the weights in range -.05 to .05
+        public void randomizeWeights() {
+		for (int i = 0; i < inputSize; i++)
+			for (int j = 0; j < outputSize; j++)
+				weightsItoH[i][j] = rand(-.05, .05);
+		
+	}
+          
+        //to randomize weights using math.random();
+        private double rand(double a, double b) {
+            //Random random = new Random();
+            //return a + (b - a) * random.nextDouble();
+		return a + (b - a) * Math.random();
+	}
+          //to initialize the variables for input and output layer
+        private void init() {
+		this.weightsItoH = new double[this.inputSize][this.outputSize];
+		this.ai 		 = new double[this.inputSize];
+		this.ao 		 = new double[this.outputSize];
+		ai[this.inputSize  - 1]   = 1.0;
+		epochs = 1;
+	}
+        
+        //This is the function to train and test the data and to calculate the accuracy and check the condition o accuracy to terminate
+        public void trainntest(Vector<Vector<Double>> xTrain, Vector<Vector<Double>> yTrain,Vector<Vector<Double>> xTest, Vector<Vector<Double>> yTest, int iterLimit) {		
+   		//converting data to arrays for calculation
+                Double[][] input=new Double[xTrain.size()][];
+                Double[][] output=new Double[yTrain.size()][];
+                Double[][] inputtest=new Double[xTest.size()][];
+                Double[][] outputtest=new Double[yTest.size()][];
+                double r=0.0,pr=0.0;
+                boolean flag=false;
+                for(int x=0;x<xTrain.size();x++){
+                input[x] = xTrain.get(x).toArray(new Double[inputSize]);  
+                
+                   }
+                for(int y=0;y<yTrain.size();y++){
+                    output[y]= yTrain.get(y).toArray(new Double[outputSize]); 
+                }
+                for(int x1=0;x1<xTest.size();x1++){
+                inputtest[x1] = xTest.get(x1).toArray(new Double[inputSize]);  
+                }
+                for(int y1=0;y1<yTest.size();y1++){
+                    outputtest[y1]= yTest.get(y1).toArray(new Double[outputSize]); 
+                }
+		//Calculations for epoch 0                                                                               
+                for (int i = 0; i < input.length; i++) {
+                                int x = eval(input[i]);
+                                int expected = maxIndex(output[i]);				
+                                if (expected == x) {
+                                    r = r+1.0;
+                                }
+                }
+                System.out.println("Training Accuracy at Epoch 0 :"+(r/input.length)*100);
+                System.out.println("Testing Accuracy at Epoch 0 :"+test(inputtest,outputtest,true));
+                
+		//training updating weights and testing
+		for (int c = 1; c <= iterLimit; c++,epochs++){
+                    System.out.println("Epoch:"+c);    
+                        r=0.0;      
+                        flag=false;
+			for (int i = 0; i < input.length; i++) {
+                                int x = eval(input[i]);
+                                int expected = maxIndex(output[i]);
+				double[] errors = new double[outputSize];                               
+                                double z=0.0;
+                                if (expected == x) {
+                                    r += 1.0;
+                                }
+				//else if(flag==false)
+				else{
+                                    flag=true;
+				for (int k = 0; k < outputSize; k++){
+                                    if(ao[k]>0)
+                                        z=1.0;                       
+                                    else
+                                        z=0.0;
+				errors[k] = (output[i][k] - z);
+                                //System.out.println(errors[k]);
+                                }
+                                BackPropOrupdateWeights(errors);
+                                }
+          }
+               r = (r/input.length)*100;
+               System.out.println("Training accuracy : "+r);
+               double r1= test(inputtest,outputtest,true);
+               System.out.println("Testing accuracy : "+r1);
+               if(c>1){
+               if(((r-pr)<.01 || r==100.0))
+                   break;
+               else
+                   pr=r;
+               }else
+                   pr=r;
+          }
+          cmatrixcal(inputtest,outputtest,true);          
+          }
+        //Function to calculate cmatrix on the testing data
+        public void cmatrixcal(Double[][] inputs, Double[][] outputs, boolean print) {
+               int[][] cmatrix=new int[10][10];
+                  for (int i = 0; i < inputs.length; i++) {
+			int x = eval(inputs[i]);
+			int expected = maxIndex(outputs[i]);
+                        //if correct output predicted then update i,i of the matrix else the i,j
+                        if(expected==x)
+                        {
+                            cmatrix[x][x]=cmatrix[x][x]+1;
+                        }
+                        else
+                        {
+                            cmatrix[expected][x]=cmatrix[expected][x] + 1;
+                            
+                        }                       
+                  }
+                  System.out.println("Confusion Matrix After Training and epoch "+epochs+" On Testing data is as below:");
+                   for(int j=0;j<10;j++)
+                        {
+                            for(int k=0;k<10;k++)
+                                System.out.print("     "+cmatrix[j][k]+"     ");
+                            System.out.println();
+          }
+           }
+        //Function to calculate error and update weights
+        private void BackPropOrupdateWeights(double[] errors) {		
+		// Update weights from input to output layer
+		for (int i = 0; i < inputSize; i++)
+			for (int j = 0; j < outputSize; j++)
+				weightsItoH[i][j] += LEARNING_RATE * errors[j] * ai[i];
+		
+	}
+        //Function to calculate the output by based on the sumed outout array
+        public int eval(Double[] pattern) {
+		forwardPropagation(pattern);
+		return interpret();
+	}
+        //Function to calculate the output from the predicted output array
+        private int interpret() {
+		if (outputSize == 1) return (ao[0] < 0.5)? 0 : 1;
+		int index = 0;
+		double max = ao[0];
+		for (int k = 1; k < outputSize; k++)
+			if (ao[k] > max) {
+				max = ao[k]; index = k;
+			}
+		return index;
+	}
+        //Function to calculate the expected output from the binary output array by tsking the index of the maximum element
+        private int maxIndex(Double[] pattern) {
+		int index = 0;
+		double max = pattern[0];
+		for (int k = 1; k < outputSize; k++)
+			if (pattern[k] > max) {
+				max = pattern[k]; index = k;
+			}
+		return index;
+	}
+        
+        //function to calculate the dot product of the input nd weights array.
+        private void forwardPropagation(Double[] inputs) {
+		// Compute activations for input layer neurons
+		for (int i = 0; i < inputSize - 1; i++)
+			ai[i] = inputs[i];		
+
+		// Compute activations for output layer neurons
+		for (int k = 0; k < outputSize; k++) {
+			ao[k] = 0.0;
+			for (int j = 0; j < inputSize; j++)
+				ao[k] += ai[j] * weightsItoH[j][k];
+                                
+                                
+		}
+	}
+ 
+        //Function to calculate accuracy on the test data
+        public double test(Double[][] inputs, Double[][] outputs, boolean print) {
+		double r = 0.0;
+		//System.out.println("Iterations: " + epochs);
+		for (int i = 0; i < inputs.length; i++) {
+			int x = eval(inputs[i]);
+			int expected = maxIndex(outputs[i]);
+			//if (print) System.out.println("Expected: " + expected + " " + Arrays.toString(outputs[i]) +
+			//							  " Result: " + x + " " + Arrays.toString(ao));
+			if (expected == x) r+=1;
+			
+		}	
+		//return accuracy			
+		return (r/inputs.length)*100;
+	}
+        //Function to read data from the file and divide it into output and input vectors and also scaling it in 0 and 1
+        public static void readFile(String fileName, Vector <Vector<Double> > x,
+                              Vector <Vector<Double> > y) {
+    try {
+      BufferedReader reader = new BufferedReader(new FileReader(fileName));
+      String line = null;
+      while((line = reader.readLine()) != null){
+        String item[] = line.split(",");
+        
+        Vector <Double> vec = new Vector<Double>(784);
+        for (int i = 1; i < item.length; i++) {
+          double tmp = Double.parseDouble(item[i]);
+          vec.addElement(tmp > 0 ? 1.0 : 0.0);
+        }
+        x.addElement(vec);
+
+        vec = new Vector<Double>(10);
+
+        for (int i = 0; i < 10; i++) {
+        vec.addElement(0.0);
+        }
+
+        vec.set(Integer.parseInt(item[0]), 1.0);
+        y.addElement(vec);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+    /**
+     * This main function calls the read file method and then it creates object for network and call the training and testing function for different learning rates.
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        // Reading data and converting to usable form
+        Vector<Vector<Double>> xTrain = new Vector<Vector<Double>>();
+        Vector<Vector<Double>> yTrain = new Vector<Vector<Double>>();
+
+        Vector<Vector<Double>> xTest = new Vector<Vector<Double>>();
+        Vector<Vector<Double>> yTest = new Vector<Vector<Double>>();
+         readFile("mnist_train.csv", xTrain, yTrain);
+        System.out.println("Done reading train with " + xTrain.size() + " instance(s).");
+
+        readFile("mnist_test.csv", xTest, yTest);
+        System.out.println("Done reading test with " + xTest.size() + " instance(s).");
+               //creating objects and calling traing n testing method
+            System.out.println("Output with Learning Rate '.1' :");
+            NeuralNetwork1 nn = new NeuralNetwork1(0.1, 784, 10);
+            nn.trainntest(xTrain,yTrain,xTest,yTest,70);            
+            System.out.println("Output with Learning Rate '.01' :");
+            NeuralNetwork1 nn1=new NeuralNetwork1(.01,784,10);
+            nn1.trainntest(xTrain, yTrain, xTest, yTest, 70);
+            System.out.println("Output with Learning Rate '.001' :");
+            NeuralNetwork1 nn2=new NeuralNetwork1(.001,784,10);
+            nn2.trainntest(xTrain, yTrain, xTest, yTest, 70);
+            
+    }    
+}

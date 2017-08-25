@@ -1,0 +1,5 @@
+run = 0seed = 9
+run = 1seed = 4
+run = 2seed = 7
+run = 3seed = 3
+run = 4seed = 10

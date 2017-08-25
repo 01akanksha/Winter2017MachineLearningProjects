@@ -1,0 +1,13 @@
+1) copy the folder kmeans to putty 
+2) open KMeans.java
+	replace akanksha with your username 
+3) Compile file KMeans.java using 
+	javac KMeans.java
+4) Run using
+	java KMeans
+It may take few minutes to run to the completion
+
+5) Check all the outputs in the folders k_10/k_30
+
+also for k=30 modify k in KMeans.java
+

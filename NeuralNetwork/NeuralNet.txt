@@ -1,0 +1,463 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package neuralnet;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Random;
+import java.util.Vector;
+
+/**
+ *neural network Homework 2
+ * @author A
+ */
+public class NeuralNet {
+        // network variable declaration
+        private int hiddenSize, inputSize, outputSize, iters;
+	private double[][] weightsItoH;
+	private double[][] weightsHtoO;
+        private double[][] delweightsItoH;
+	private double[][] delweightsHtoO;
+	private double[] ah;
+	private double[] ai;
+	private double[] ao;
+	private double LEARNING_RATE;
+	private static final double E = 0.001;
+        private static double momentum;
+        /**
+         * Constructor
+         * @param learningRate of the network passed in constructor
+         * @param momentum of the network passed in constructor
+         * @param inputSize of the network passed in constructor
+         * @param hiddenSize of the network passed in constructor
+         * @param outputSize of the network passed in constructor
+         */
+        public NeuralNet(double learningRate,double momentum, int inputSize, int hiddenSize, int outputSize) {
+		defaultInit(learningRate,momentum, inputSize, hiddenSize, outputSize);
+	}
+        /**
+         * to set the network attributes
+         * @param learningRate of the network passed in constructor
+         * @param momentum of the network passed in constructor
+         * @param inputSize of the network passed in constructor
+         * @param hiddenSize of the network passed in constructor
+         * @param outputSize of the network passed in constructor
+         */
+        private void defaultInit(double learningRate,double momentum, int inputSize, int hiddenSize, int outputSize) {
+		this.LEARNING_RATE = learningRate;
+		this.inputSize   = inputSize + 1;
+		this.hiddenSize  = hiddenSize + 1;
+		this.outputSize  = outputSize;
+                this.momentum=momentum;
+		init();
+		randomizeWeights();
+	}
+        /**
+         * to randomize weight matrices at input and hidden layer
+         */
+        public void randomizeWeights() {
+		for (int i = 0; i < inputSize; i++)
+			for (int j = 0; j < hiddenSize; j++)
+				weightsItoH[i][j] = rand(-.05, .05);
+		for (int j = 0; j < hiddenSize; j++)
+			for (int k = 0; k < outputSize; k++)
+				weightsHtoO[j][k] = rand(-.05, .05);
+	}
+        /**
+         * to initialize neural network components
+         */
+        private void init() {
+		this.weightsItoH = new double[this.inputSize][this.hiddenSize];
+		this.weightsHtoO = new double[this.hiddenSize][this.outputSize];
+                this.delweightsItoH = new double[this.inputSize][this.hiddenSize];
+		this.delweightsHtoO = new double[this.hiddenSize][this.outputSize];
+                for (double[] row: delweightsItoH)
+                Arrays.fill(row, 0.0);
+                for (double[] row: delweightsHtoO)
+                Arrays.fill(row, 0.0);                
+		this.ai 		 = new double[this.inputSize];
+		this.ah 		 = new double[this.hiddenSize];
+		this.ao 		 = new double[this.outputSize];
+		ah[this.hiddenSize - 1]   = 1.0; // Bias units
+		ai[this.inputSize  - 1]   = 1.0;
+		//iters = 1;
+	}
+        /**
+         * to calculate confusionmatrix on test data after training is complete
+         * @param inputs input test array
+         * @param outputs output test array
+         * @param print whether to print or not
+         */
+         public void cmatrixcal(Double[][] inputs, Double[][] outputs, boolean print) {
+               int[][] cmatrix=new int[10][10];
+                  for (int i = 0; i < inputs.length; i++) {
+			int x = eval(inputs[i]);
+			int expected = maxIndex(outputs[i]);
+                        
+                        if(expected==x)
+                        {
+                            cmatrix[x][x]=cmatrix[x][x]+1;
+                        }
+                        else
+                        {
+                            cmatrix[expected][x]=cmatrix[expected][x] + 1;
+                            
+                        }                       
+                  }
+                  System.out.println("Confusion Matrix After Training on Testing data is as below:");
+                   for(int j=0;j<10;j++)
+                        {
+                            for(int k=0;k<10;k++)
+                                System.out.print("     "+cmatrix[j][k]+"     ");
+                            System.out.println();
+          }
+           }
+        public void train(Vector<Vector<Double>> xTrain, Vector<Vector<Double>> yTrain,Vector<Vector<Double>> xTest, Vector<Vector<Double>> yTest, int iterLimit) {              
+                              
+                Double[][] input=new Double[xTrain.size()][];
+                Double[][] output=new Double[yTrain.size()][];
+                Double[][] inputtest=new Double[xTest.size()][];
+                Double[][] outputtest=new Double[yTest.size()][];
+                double r=0.0,pr=0.0,t=0.0;
+                boolean flag=true;
+                for(int x=0;x<xTrain.size();x++){
+                input[x] = xTrain.get(x).toArray(new Double[inputSize]);  
+                
+                   }
+                for(int y=0;y<yTrain.size();y++){
+                    output[y]= yTrain.get(y).toArray(new Double[outputSize]); 
+                }
+                for(int x1=0;x1<xTest.size();x1++){
+                inputtest[x1] = xTest.get(x1).toArray(new Double[inputSize]);  
+                }
+                for(int y1=0;y1<yTest.size();y1++){
+                    outputtest[y1]= yTest.get(y1).toArray(new Double[outputSize]); 
+                }         
+//                shuffle(input);
+  //              shuffle(output);
+    //            shuffle(inputtest);
+      //          shuffle(outputtest);
+                double acc=0.0;
+                System.out.println("accuracies at epoch 0");
+                for (int i = 0; i < input.length; i++) {
+				//forwardPropagation(input[i]);
+                                int x = eval(input[i]);
+                                int expected = maxIndex(output[i]);
+                                if(x==expected)
+                                {
+                                    acc+=1;
+                                }}
+                System.out.println("training accuracy is : "+(acc/input.length)*100);
+                System.out.println("testing accuracy is : " + test(inputtest,outputtest,true));
+		for (int c = 1; c <=iterLimit; c++)
+                {               acc=0.0;
+                System.out.println("accuracies at epoch : " + c);
+			for (int i = 0; i < input.length; i++) {
+				//forwardPropagation(input[i]);
+                                int x = eval(input[i]);
+                                int expected = maxIndex(output[i]);
+                                if(x==expected)
+                                {
+                                    acc+=1;
+                                }
+				double[] errors = new double[outputSize];
+				for (int k = 0; k < outputSize; k++)                                
+                                {
+                                    if(output[i][k]>0)
+                                        t=.9;
+                                    else
+                                        t=.1;
+                                    errors[k] = t - ao[k];}
+				backPropagation(errors);
+			}
+                        acc=(acc/(input.length))*100;
+                        System.out.println("training accuracy is : "+ acc);
+                        System.out.println("testing accuracy is : " + test(inputtest,outputtest,true));
+                        if(c>1){
+               if(((acc-pr)<.01 || acc==100.0) && flag==true)
+               {System.out.println("network converged but continuing till 50 epochs");
+                   flag=false;} 
+               else
+                   pr=acc;
+               }else
+                   pr=acc;
+        }                
+                cmatrixcal(inputtest,outputtest,true);
+	}
+        /**
+         * to test the trained network
+         * @param inputtest input to test
+         * @param outputtest expected output array
+         * @param print whether to print or not
+         * @return accuracy after testing
+         */
+        public double test(Double[][] inputtest, Double[][] outputtest, boolean print) {                           
+		double r = 0.0;
+		for (int i = 0; i < inputtest.length; i++) {
+			int x = eval(inputtest[i]);
+			int expected = maxIndex(outputtest[i]);
+			if (expected == x) r += 1.0;                        
+		}
+		return (r/inputtest.length)*100;
+	}
+        /**
+         * to generate random numbers in given range
+         * @param a lower bound
+         * @param b upper bound
+         * @return generated number
+         */
+        private double rand(double a, double b) {
+		return a + (b - a) * Math.random();
+	}
+        /**
+         * to cal activations
+         * @param x to cal activation
+         * @return calculated activations
+         */
+        private double sigmoid(double x) {
+		return 1./(1 + Math.exp(-x));
+	}
+
+        /**
+         * To cal derivative
+         * @param y to calculate derivative of
+         * @return derivative
+         */
+        private double dSigmoid(double y) {
+		return y * (1 - y);
+	}
+        /**
+         * To calculate deltas at output and hidden layer
+         * @param errors error calculated after checking the targeted value and predicted value
+         */
+        private void backPropagation(double[] errors) {
+		// Compute delta for output layer neuron
+		double[] deltak = new double[outputSize];
+		for (int k = 0; k < outputSize; k++)
+			deltak[k] = dSigmoid(ao[k]) * errors[k];
+		
+		// Compute delta for hidden layer neurons
+		double[] deltaj = new double[hiddenSize];
+		for (int j = 0; j < hiddenSize; j++)
+			for (int k = 0; k < outputSize; k++)
+				deltaj[j] += dSigmoid(ah[j]) * deltak[k] * weightsHtoO[j][k];
+
+		// Update weights from input to hidden layer
+		for (int i = 0; i < inputSize; i++)
+			for (int j = 0; j < hiddenSize; j++)
+                        {
+                                //System.out.println(delweightsItoH[i][j]);
+				weightsItoH[i][j] =weightsItoH[i][j]+ LEARNING_RATE * deltaj[j] * ai[i] + momentum* delweightsItoH[i][j];
+                                delweightsItoH[i][j]=LEARNING_RATE * deltaj[j] * ai[i];
+                        }
+
+		// Update weights from hidden to output layer
+		for (int j = 0; j < hiddenSize; j++)
+			for (int k = 0; k < outputSize; k++)
+                        {
+                            //System.out.println(delweightsHtoO[j][k]);
+                            weightsHtoO[j][k] = weightsHtoO[j][k]+LEARNING_RATE * deltak[k] * ah[j]+momentum*delweightsHtoO[j][k];
+                                delweightsHtoO[j][k]=LEARNING_RATE * deltak[k] * ah[j];
+                        }       
+	}
+/**
+ * to cal activations
+ * @param inputs to calculate activations of input given
+ */
+        private void forwardPropagation(Double[] inputs) {
+		// Compute activations for input layer neurons
+		for (int i = 0; i < inputSize - 1; i++)
+			ai[i] = inputs[i];
+
+		// Compute activations for hidden layer neurons
+		for (int j = 0; j < hiddenSize - 1; j++) {
+			ah[j] = 0.0;
+			for (int i = 0; i < inputSize; i++)
+				ah[j] += weightsItoH[i][j] * ai[i];
+			ah[j] = sigmoid(ah[j]);
+		}
+
+		// Compute activations for output layer neurons
+		for (int k = 0; k < outputSize; k++) {
+			ao[k] = 0.0;
+			for (int j = 0; j < hiddenSize; j++)
+				ao[k] += ah[j] * weightsHtoO[j][k];
+			ao[k] = sigmoid(ao[k]);
+		}
+	}
+        /**
+         * to calculate activations and predict output
+         * @param pattern to check the output for the given input
+         * @return predicted output
+         */
+        public int eval(Double[] pattern) {
+		forwardPropagation(pattern);
+		return interpret();
+	}
+        /**
+         * function to interpret the output array to get the expected
+         * @return max index
+         */
+        private int interpret() {
+		if (outputSize == 1) return (ao[0] < 0.5)? 0 : 1;
+		int index = 0;
+		double max = ao[0];
+		for (int k = 1; k < outputSize; k++)
+			if (ao[k] > max) {
+				max = ao[k]; index = k;
+			}
+		return index;
+	}
+        /**
+         * 
+         * @param pattern to check the maxindex of predicted output
+         * @return max index or output number
+         */
+        private int maxIndex(Double[] pattern) {
+		int index = 0;
+		double max = pattern[0];
+		for (int k = 1; k < outputSize; k++)
+			if (pattern[k] > max) {
+				max = pattern[k]; index = k;
+			}
+		return index;
+	}
+        /**
+         * 
+         * @param fileName file to be read
+         * @param x vector used for storing input
+         * @param y vector used for storing output
+         */
+        public static void readFile(String fileName, Vector <Vector<Double> > x,Vector <Vector<Double> > y) {
+                try {
+                  BufferedReader reader = new BufferedReader(new FileReader(fileName));
+                  String line = null;
+                  while((line = reader.readLine()) != null){
+                    String item[] = line.split(",");
+
+                    Vector <Double> vec = new Vector<Double>(784);
+                    for (int i = 1; i < item.length; i++) {
+                      double tmp = Double.parseDouble(item[i]);
+                      vec.addElement(tmp > 0 ? 1.0 : 0.0);
+                    }
+                    x.addElement(vec);
+
+                    vec = new Vector<Double>(10);
+
+                    for (int i = 0; i < 10; i++) {
+                    vec.addElement(0.0);
+                    }
+
+                    vec.set(Integer.parseInt(item[0]), 1.0);
+                    y.addElement(vec);
+                }
+            } catch (Exception e) {
+                  e.printStackTrace();
+            }
+        }
+        /**
+         * Function to shuffle the array
+         * @param a array to be shuffled
+         */
+        void shuffle(Double[][] a) {        
+            Random random = new Random();
+            for (int i = a.length - 1; i > 0; i--) {
+                for (int j = a[i].length - 1; j > 0; j--) {
+                    int m = random.nextInt(i + 1);
+                    int n = random.nextInt(j + 1);
+                    Double temp = a[i][j];
+                    a[i][j] = a[m][n];
+                    a[m][n] = temp;
+                }
+            }
+        }
+    /**
+     * this is the main function to read from csv file and call function on the basis of diiferent experiments
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {        
+        //reading data
+        Vector<Vector<Double>> xTrain = new Vector<Vector<Double>>();
+        Vector<Vector<Double>> yTrain = new Vector<Vector<Double>>();
+
+        Vector<Vector<Double>> xTest = new Vector<Vector<Double>>();
+        Vector<Vector<Double>> yTest = new Vector<Vector<Double>>();
+         readFile("C:\\Users\\A\\Documents\\MLHW1\\src\\mlhw1\\mnist_test.csv", xTrain, yTrain);
+        System.out.println("Done reading train with " + xTrain.size() + " instance(s).");
+
+        readFile("C:\\Users\\A\\Documents\\MLHW1\\src\\mlhw1\\mnist_test.csv", xTest, yTest);
+        System.out.println("Done reading test with " + xTest.size() + " instance(s).");
+        
+         Vector<Vector<Double>> xTrain1 = new Vector<Vector<Double>>();
+         Vector<Vector<Double>> yTrain1 = new Vector<Vector<Double>>();
+        
+         Vector<Vector<Double>> xTrain2 = new Vector<Vector<Double>>();
+         Vector<Vector<Double>> yTrain2 = new Vector<Vector<Double>>();
+         
+         for(int x=0;x<xTrain.size()/4;x++){
+                xTrain1.add(xTrain.get(x));                  
+                   }
+                for(int y=0;y<yTrain.size()/4;y++){
+                    yTrain1.add(yTrain.get(y)); 
+                }
+                 for(int x=0;x<xTrain.size()/2;x++){
+                xTrain2.add(xTrain.get(x));                  
+                   }
+                for(int y=0;y<yTrain.size()/2;y++){
+                    yTrain2.add(yTrain.get(y)); 
+                }
+              //Creating objects by varying the hidden layers momentum and training data set and calling train method  
+              System.out.println("Results with Experiment 1");
+
+              System.out.println("Results with hidden layer 20");
+
+            NeuralNet nn = new NeuralNet(0.1, .9,784, 20,10);
+            nn.train(xTrain,yTrain,xTest,yTest,50);          
+
+              System.out.println("Results with hidden layer 50");
+
+            NeuralNet nn1 = new NeuralNet(0.1,.9, 784, 50,10);
+            nn1.train(xTrain,yTrain,xTest,yTest,50);          
+
+              System.out.println("Results with hidden layer 100");
+
+            NeuralNet nn2 = new NeuralNet(0.1,.9, 784,100,10);
+            nn2.train(xTrain,yTrain,xTest,yTest,50);
+
+              System.out.println("Results with Experiment 2");
+
+              System.out.println("Results with momentum 0");
+
+            NeuralNet nn3 = new NeuralNet(0.1, 0,784, 100,10);
+            nn3.train(xTrain,yTrain,xTest,yTest,50);     
+
+              System.out.println("Results with momentum .25");
+
+            NeuralNet nn4 = new NeuralNet(0.1,.25, 784, 100,10);
+            nn4.train(xTrain,yTrain,xTest,yTest,50);       
+
+              System.out.println("Results with momentum .5");
+
+            NeuralNet nn5 = new NeuralNet(0.1,.5, 784,100,10);
+            nn5.train(xTrain,yTrain,xTest,yTest,50);
+
+              System.out.println("Results with Experiment 3");
+
+              System.out.println("Results with one quarter of training data");
+
+            NeuralNet nn6 = new NeuralNet(0.1,.9, 784,100,10);
+            nn6.train(xTrain1,yTrain1,xTest,yTest,50);
+
+              System.out.println("Results with Experiment 3");
+              System.out.println("Results with one half of training data");
+
+            NeuralNet nn7 = new NeuralNet(0.1,.9, 784,100,10);
+            nn7.train(xTrain2,yTrain2,xTest,yTest,50);
+    }
+    
+}
